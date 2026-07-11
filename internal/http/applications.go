@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -26,6 +27,9 @@ func (h *ApplicationsHandler) Register(e *echo.Echo, requireAdmin echo.Middlewar
 	g.POST("", h.create)
 	g.GET("", h.list)
 	g.POST("/:id/api-keys", h.mintKey)
+	g.GET("/:id/api-keys", h.listKeys)
+	g.POST("/:id/api-keys/:keyId/rotate", h.rotateKey)
+	g.POST("/:id/api-keys/:keyId/revoke", h.revokeKey)
 }
 
 type createApplicationRequest struct {
@@ -87,4 +91,64 @@ func (h *ApplicationsHandler) mintKey(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, mintKeyResponse{ID: key.ID, Prefix: key.Prefix, Key: plaintext})
+}
+
+func (h *ApplicationsHandler) listKeys(c echo.Context) error {
+	appID := c.Param("id")
+	ctx := c.Request().Context()
+
+	if _, err := h.applications.ByID(ctx, appID); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "application not found")
+	}
+
+	keys, err := h.apiKeys.List(ctx, appID)
+	if err != nil {
+		c.Logger().Errorf("list api keys: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list api keys")
+	}
+	return c.JSON(http.StatusOK, keys)
+}
+
+// rotateKey issues a new key for the same application and revokes the one at
+// :keyId, atomically. Returns the new plaintext key, same shape as mintKey.
+func (h *ApplicationsHandler) rotateKey(c echo.Context) error {
+	appID := c.Param("id")
+	keyID := c.Param("keyId")
+	ctx := c.Request().Context()
+
+	plaintext, prefix, secretHash, err := apikey.NewKey()
+	if err != nil {
+		c.Logger().Errorf("generate api key: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to rotate api key")
+	}
+
+	newKey, err := h.apiKeys.Rotate(ctx, keyID, appID, prefix, secretHash)
+	switch {
+	case errors.Is(err, apikey.ErrKeyNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, "api key not found")
+	case errors.Is(err, apikey.ErrKeyRevoked):
+		return echo.NewHTTPError(http.StatusConflict, "api key is already revoked")
+	case err != nil:
+		c.Logger().Errorf("rotate api key: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to rotate api key")
+	}
+
+	return c.JSON(http.StatusCreated, mintKeyResponse{ID: newKey.ID, Prefix: newKey.Prefix, Key: plaintext})
+}
+
+// revokeKey revokes the key at :keyId. Revoking an already-revoked key
+// succeeds as a no-op.
+func (h *ApplicationsHandler) revokeKey(c echo.Context) error {
+	appID := c.Param("id")
+	keyID := c.Param("keyId")
+
+	err := h.apiKeys.Revoke(c.Request().Context(), keyID, appID)
+	switch {
+	case errors.Is(err, apikey.ErrKeyNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, "api key not found")
+	case err != nil:
+		c.Logger().Errorf("revoke api key: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to revoke api key")
+	}
+	return c.NoContent(http.StatusNoContent)
 }

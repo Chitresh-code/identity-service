@@ -1,0 +1,27 @@
+meta {
+  name: api-keys-revoke
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/admin/applications/:id/api-keys/:keyId/revoke
+  body: none
+  auth: none
+}
+
+params:path {
+  id: replace-with-a-real-application-id
+  keyId: replace-with-a-real-key-id
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: revokes the key at :keyId outright, no new key issued.
+  Idempotent -- revoking an already-revoked key still returns 204. 404 if
+  the key doesn't belong to the application. Documents the unauthenticated
+  case (401) here.
+}

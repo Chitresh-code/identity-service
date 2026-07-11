@@ -1,0 +1,26 @@
+meta {
+  name: api-keys-list
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/admin/applications/:id/api-keys
+  body: none
+  auth: none
+}
+
+params:path {
+  id: replace-with-a-real-application-id
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: lists every key issued to the application at :id (metadata
+  only -- id, prefix, created_at, revoked_at -- never the secret hash).
+  Documents the unauthenticated case (401). Re-run manually with an admin's
+  identity_session cookie and a real application id to get a 200.
+}
