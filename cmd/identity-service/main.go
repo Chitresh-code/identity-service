@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -59,10 +58,11 @@ func main() {
 	}
 	jwksHandler := identityhttp.NewJWKSHandler(signingKeyStore)
 	tokenHandler := identityhttp.NewTokenHandler(apiKeyStore, signingKeyStore, cfg.AppBaseURL)
+	healthHandler := identityhttp.NewHealthHandler(signingKeyStore)
 
 	e := echo.New()
 	e.Use(middleware.Logger())
-	e.GET("/health", healthHandler)
+	healthHandler.Register(e)
 	authHandler.Register(e)
 	applicationsHandler.Register(e, authHandler.RequireAdmin)
 	jwksHandler.Register(e)
@@ -71,8 +71,4 @@ func main() {
 	if err := e.Start(":" + cfg.Port); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}
-}
-
-func healthHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }

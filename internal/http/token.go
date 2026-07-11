@@ -13,10 +13,20 @@ import (
 )
 
 // tokenTTL is how long an issued access token stays valid.
+//
+// Revoking the underlying API key does not invalidate tokens already issued
+// against it -- they simply keep working until they expire on their own.
+// Accepted tradeoff: a short TTL bounds a revoked key's blast radius to at
+// most tokenTTL without needing a token blocklist or introspection endpoint.
+// Revisit if a consumer ever needs revocation to take effect immediately.
 const tokenTTL = 15 * time.Minute
 
 // TokenHandler exchanges an API key for a short-lived signed JWT that
 // resource servers can verify against this service's JWKS.
+//
+// No refresh token: callers already hold their API key and can just call
+// this endpoint again, so a refresh token would be one more credential to
+// secure for no real benefit to a service-to-service caller.
 type TokenHandler struct {
 	apiKeys     apikey.Store
 	signingKeys signingkey.Store
