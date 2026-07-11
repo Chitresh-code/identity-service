@@ -12,7 +12,8 @@ branch → PR workflow this project follows.
 ## Status
 
 Scaffold (#2), Auth0 login/session (#3), application/API key issuance (#4), key
-rotation/revocation (#5), and JWKS + token issuance (#6) complete:
+rotation/revocation (#5), JWKS + token issuance (#6), token-issuance hardening (#9),
+and rate limiting + structured logging (#7) complete:
 - Echo boots with a `/health` route; config loads from the environment (`.env` locally
   via `godotenv`); GORM connects to Postgres with schema managed by `golang-migrate`.
 - `GET /auth/login` redirects to Auth0's Universal Login (Authorization Code flow).
@@ -49,9 +50,17 @@ rotation/revocation (#5), and JWKS + token issuance (#6) complete:
   no-refresh-token tradeoffs are documented in code and on the wiki rather than left
   implicit.
 
-Next up: #7 (rate limiting + structured logging, including a tighter limit and audit
-logging specifically for `/token`), then #8 (retrofit MarketPulse to verify tokens via
-this service's JWKS instead of its shared-secret HS256 check).
+- (#7) Requests are tagged with an `X-Request-Id` (`middleware.RequestID`) and logged via
+  Echo's built-in access logger -- JSON by default, or a human-readable one-liner when
+  `Environment` (env var `ENVIRONMENT`) is `"local"` (the default). Rate limiting is
+  per-credential (session cookie hash or API key prefix, falling back to IP) rather than
+  IP-only: ~60/min everywhere except `/health` (skipped), and a tighter 10/min specifically
+  on `POST /token`, which now also emits an audit log line (`Info` on success, `Warn` with
+  a reason on denial) for every issuance attempt (see the "Rate Limiting & Logging" wiki
+  page).
+
+Next up: #8 (retrofit MarketPulse to verify tokens via this service's JWKS instead of its
+shared-secret HS256 check).
 
 ## Running locally
 

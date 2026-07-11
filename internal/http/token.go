@@ -39,9 +39,11 @@ func NewTokenHandler(apiKeys apikey.Store, signingKeys signingkey.Store, issuer 
 	return &TokenHandler{apiKeys: apiKeys, signingKeys: signingKeys, issuer: issuer}
 }
 
-// Register wires the token route onto e.
-func (h *TokenHandler) Register(e *echo.Echo) {
-	e.POST("/token", h.issue)
+// Register wires the token route onto e, gated by rateLimiter -- token
+// issuance is the auth choke point (it's what actually verifies an API key),
+// so it gets its own, tighter limit rather than sharing the default one.
+func (h *TokenHandler) Register(e *echo.Echo, rateLimiter echo.MiddlewareFunc) {
+	e.POST("/token", h.issue, rateLimiter)
 }
 
 type tokenResponse struct {
@@ -53,18 +55,22 @@ type tokenResponse struct {
 func (h *TokenHandler) issue(c echo.Context) error {
 	prefix, secret, ok := strings.Cut(bearerToken(c.Request().Header.Get("Authorization")), ".")
 	if !ok || prefix == "" || secret == "" {
+		c.Logger().Warnf("token issuance denied: reason=malformed_credential")
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid api key")
 	}
 
 	ctx := c.Request().Context()
 	key, secretHash, err := h.apiKeys.ByPrefix(ctx, prefix)
 	if err != nil {
+		c.Logger().Warnf("token issuance denied: reason=unknown_prefix prefix=%s", prefix)
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid api key")
 	}
 	if key.RevokedAt != nil {
+		c.Logger().Warnf("token issuance denied: reason=revoked prefix=%s application_id=%s", prefix, key.ApplicationID)
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid api key")
 	}
 	if subtle.ConstantTimeCompare([]byte(apikey.HashSecret(secret)), []byte(secretHash)) != 1 {
+		c.Logger().Warnf("token issuance denied: reason=bad_secret prefix=%s application_id=%s", prefix, key.ApplicationID)
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid api key")
 	}
 
@@ -80,6 +86,7 @@ func (h *TokenHandler) issue(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to issue token")
 	}
 
+	c.Logger().Infof("token issued: application_id=%s kid=%s", key.ApplicationID, signingK.ID)
 	return c.JSON(http.StatusOK, tokenResponse{
 		AccessToken: token,
 		TokenType:   "Bearer",

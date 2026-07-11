@@ -14,6 +14,9 @@ type Config struct {
 	Auth0ClientID     string
 	Auth0ClientSecret string
 	AppBaseURL        string
+	// Environment selects log formatting: "local" gets human-readable text
+	// logs, anything else gets JSON. Defaults to "local".
+	Environment string
 }
 
 // Load reads configuration from the environment and validates required values.
@@ -25,6 +28,7 @@ func Load() (Config, error) {
 		Auth0ClientID:     os.Getenv("AUTH0_CLIENT_ID"),
 		Auth0ClientSecret: os.Getenv("AUTH0_CLIENT_SECRET"),
 		AppBaseURL:        getEnv("APP_BASE_URL", "http://localhost:8080"),
+		Environment:       getEnv("ENVIRONMENT", "local"),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
