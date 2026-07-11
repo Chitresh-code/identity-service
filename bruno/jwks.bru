@@ -1,0 +1,21 @@
+meta {
+  name: jwks
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/.well-known/jwks.json
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Public JWKS: the RSA public key(s) this service signs tokens with. No auth
+  -- resource servers fetch this to verify tokens issued by /token without
+  calling back to identity-service per request.
+}

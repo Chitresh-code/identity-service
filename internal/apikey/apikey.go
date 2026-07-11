@@ -43,6 +43,10 @@ type Store interface {
 	// already-revoked key is a no-op, not an error. Returns ErrKeyNotFound if
 	// id doesn't belong to applicationID.
 	Revoke(ctx context.Context, id, applicationID string) error
+	// ByPrefix looks up a key by its plaintext prefix and returns its secret
+	// hash for credential verification. Returns ErrKeyNotFound if no key has
+	// that prefix.
+	ByPrefix(ctx context.Context, prefix string) (key APIKey, secretHash string, err error)
 }
 
 // NewKey generates a fresh API key: a plaintext prefix for fast lookup and a

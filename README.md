@@ -11,8 +11,8 @@ branch → PR workflow this project follows.
 
 ## Status
 
-Scaffold (#2), Auth0 login/session (#3), application/API key issuance (#4), and key
-rotation/revocation (#5) complete:
+Scaffold (#2), Auth0 login/session (#3), application/API key issuance (#4), key
+rotation/revocation (#5), and JWKS + token issuance (#6) complete:
 - Echo boots with a `/health` route; config loads from the environment (`.env` locally
   via `godotenv`); GORM connects to Postgres with schema managed by `golang-migrate`.
 - `GET /auth/login` redirects to Auth0's Universal Login (Authorization Code flow).
@@ -34,9 +34,17 @@ rotation/revocation (#5) complete:
   old one -- a partial failure can't leave zero or two live keys. `POST
   .../api-keys/:keyId/revoke` revokes a key outright, idempotently. All admin-gated.
 
-All admin-gated routes are ready for other services to build a JWKS-verified
-resource-server integration against, but issuance ≠ verification -- nothing in this
-service can authenticate an incoming API key yet. Next up: #6 (JWKS endpoint).
+- On boot the service ensures it has an RSA signing key, generating and persisting one
+  (`signing_keys` table) the first time. `GET /.well-known/jwks.json` publishes the
+  public half -- no auth, standard JWKS convention. `POST /token` exchanges an API key
+  (`Authorization: Bearer <prefix>.<secret>`) for a short-lived (15 min) RS256 JWT
+  (`sub` = application id, `iss` = this service's base URL), rejecting unknown, wrong, or
+  revoked keys with 401. Resource servers (e.g. MarketPulse) can now verify tokens purely
+  against the JWKS, with no shared secret and no call back to this service per request
+  (see the "JWKS & Token Issuance" wiki page).
+
+Next up: #7 (rate limiting + structured logging), then #8 (retrofit MarketPulse to verify
+tokens via this service's JWKS instead of its shared-secret HS256 check).
 
 ## Running locally
 

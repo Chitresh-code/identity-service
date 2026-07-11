@@ -112,6 +112,18 @@ func (s *APIKeyStore) Rotate(ctx context.Context, oldKeyID, applicationID, newPr
 	return newKey.toDomain(), nil
 }
 
+// ByPrefix implements apikey.Store.
+func (s *APIKeyStore) ByPrefix(ctx context.Context, prefix string) (apikey.APIKey, string, error) {
+	var m apiKeyModel
+	if err := s.db.WithContext(ctx).First(&m, "prefix = ?", prefix).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apikey.APIKey{}, "", apikey.ErrKeyNotFound
+		}
+		return apikey.APIKey{}, "", fmt.Errorf("load api key by prefix %q: %w", prefix, err)
+	}
+	return m.toDomain(), m.SecretHash, nil
+}
+
 // Revoke implements apikey.Store.
 func (s *APIKeyStore) Revoke(ctx context.Context, id, applicationID string) error {
 	var m apiKeyModel
