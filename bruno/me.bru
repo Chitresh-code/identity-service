@@ -1,0 +1,22 @@
+meta {
+  name: me
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/me
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Returns the current session's user. This request has no session cookie, so
+  it documents the unauthenticated case (401). After a real browser login via
+  auth-login, re-run this manually with the identity_session cookie attached
+  to see the 200 response.
+}

@@ -1,0 +1,18 @@
+meta {
+  name: auth-login
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/auth/login
+  body: none
+  auth: none
+}
+
+docs {
+  Starts the Auth0 Universal Login redirect flow. Sets a short-lived CSRF
+  state cookie and 302s to Auth0's hosted login page -- best exercised from a
+  real browser, not headlessly, since completing it requires interactive
+  login at Auth0.
+}
