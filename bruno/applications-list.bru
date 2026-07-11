@@ -1,0 +1,21 @@
+meta {
+  name: applications-list
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/admin/applications
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: lists all applications. Documents the unauthenticated case
+  (401). Re-run manually with an admin's identity_session cookie attached to
+  get a 200 with the application list.
+}

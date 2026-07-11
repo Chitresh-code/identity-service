@@ -1,0 +1,28 @@
+meta {
+  name: applications-create
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/admin/applications
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "client-data-service"
+  }
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: creates an application (service client). This request has no
+  session cookie, so it documents the unauthenticated case (401). Re-run
+  manually with an admin's identity_session cookie attached to get a 201 with
+  the created application.
+}

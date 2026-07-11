@@ -11,7 +11,7 @@ branch → PR workflow this project follows.
 
 ## Status
 
-Scaffold (#2) and Auth0 login/session (#3) complete:
+Scaffold (#2), Auth0 login/session (#3), and application/API key issuance (#4) complete:
 - Echo boots with a `/health` route; config loads from the environment (`.env` locally
   via `godotenv`); GORM connects to Postgres with schema managed by `golang-migrate`.
 - `GET /auth/login` redirects to Auth0's Universal Login (Authorization Code flow).
@@ -22,11 +22,16 @@ Scaffold (#2) and Auth0 login/session (#3) complete:
   credential storage generally) -- a stolen DB row can't be replayed as a cookie, and
   logout/expiry are enforced server-side, not just by trusting an unrevocable JWT.
   `GET /auth/logout` clears the local session and Auth0's SSO session.
-- `GET /me` (behind the new `RequireSession` middleware) returns the current session's
-  user -- the first protected endpoint, and how other endpoints will require login going
-  forward.
+- `GET /me` (behind the `RequireSession` middleware) returns the current session's user.
+- `POST /admin/applications`, `GET /admin/applications`, and `POST
+  /admin/applications/:id/api-keys` (all behind the new `RequireAdmin` middleware) let an
+  admin register a service client and issue it an API key. Keys follow the Stripe/GitHub
+  PAT pattern: `<prefix>.<secret>`, plaintext shown exactly once at creation, only the
+  secret's SHA-256 hash stored server-side. The very first user ever to log in is
+  automatically granted admin (see the "Auth0 Login" and "Applications & API Keys" wiki
+  pages for the full bootstrap story).
 
-Next up: #4 (application model + API key issuance).
+Next up: #5 (key rotation and revocation).
 
 ## Running locally
 
