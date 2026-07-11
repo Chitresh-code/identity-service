@@ -1,0 +1,17 @@
+meta {
+  name: auth-logout
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/auth/logout
+  body: none
+  auth: none
+}
+
+docs {
+  Clears the local session cookie (if any) and 302s to Auth0's logout
+  endpoint, which clears the Auth0-side SSO session and redirects back to
+  APP_BASE_URL.
+}
