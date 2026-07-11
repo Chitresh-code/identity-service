@@ -12,6 +12,7 @@ import (
 	"github.com/sales-intelligence1/identity-service/internal/auth0"
 	"github.com/sales-intelligence1/identity-service/internal/config"
 	identityhttp "github.com/sales-intelligence1/identity-service/internal/http"
+	"github.com/sales-intelligence1/identity-service/internal/signingkey"
 	"github.com/sales-intelligence1/identity-service/internal/store"
 )
 
@@ -46,16 +47,26 @@ func main() {
 		store.NewSessionStore(db),
 		cfg.AppBaseURL,
 	)
+	apiKeyStore := store.NewAPIKeyStore(db)
 	applicationsHandler := identityhttp.NewApplicationsHandler(
 		store.NewApplicationStore(db),
-		store.NewAPIKeyStore(db),
+		apiKeyStore,
 	)
+
+	signingKeyStore := store.NewSigningKeyStore(db)
+	if _, err := signingkey.EnsureLatest(ctx, signingKeyStore); err != nil {
+		log.Fatalf("ensure signing key: %v", err)
+	}
+	jwksHandler := identityhttp.NewJWKSHandler(signingKeyStore)
+	tokenHandler := identityhttp.NewTokenHandler(apiKeyStore, signingKeyStore, cfg.AppBaseURL)
 
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.GET("/health", healthHandler)
 	authHandler.Register(e)
 	applicationsHandler.Register(e, authHandler.RequireAdmin)
+	jwksHandler.Register(e)
+	tokenHandler.Register(e)
 
 	if err := e.Start(":" + cfg.Port); err != nil {
 		log.Fatalf("server stopped: %v", err)

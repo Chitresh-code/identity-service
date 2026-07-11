@@ -1,0 +1,23 @@
+meta {
+  name: token
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/token
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Exchanges an API key for a short-lived (15 min) RS256 JWT: send the
+  plaintext key as `Authorization: Bearer <prefix>.<secret>`. Returns
+  {access_token, token_type, expires_in}. Documents the no-credential case
+  (401). Re-run manually with a real API key's Authorization header to get a
+  200 with a token; verify it against jwks.
+}
