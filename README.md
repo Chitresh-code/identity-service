@@ -11,7 +11,8 @@ branch → PR workflow this project follows.
 
 ## Status
 
-Scaffold (#2), Auth0 login/session (#3), and application/API key issuance (#4) complete:
+Scaffold (#2), Auth0 login/session (#3), application/API key issuance (#4), and key
+rotation/revocation (#5) complete:
 - Echo boots with a `/health` route; config loads from the environment (`.env` locally
   via `godotenv`); GORM connects to Postgres with schema managed by `golang-migrate`.
 - `GET /auth/login` redirects to Auth0's Universal Login (Authorization Code flow).
@@ -23,15 +24,19 @@ Scaffold (#2), Auth0 login/session (#3), and application/API key issuance (#4) c
   logout/expiry are enforced server-side, not just by trusting an unrevocable JWT.
   `GET /auth/logout` clears the local session and Auth0's SSO session.
 - `GET /me` (behind the `RequireSession` middleware) returns the current session's user.
-- `POST /admin/applications`, `GET /admin/applications`, and `POST
-  /admin/applications/:id/api-keys` (all behind the new `RequireAdmin` middleware) let an
-  admin register a service client and issue it an API key. Keys follow the Stripe/GitHub
-  PAT pattern: `<prefix>.<secret>`, plaintext shown exactly once at creation, only the
-  secret's SHA-256 hash stored server-side. The very first user ever to log in is
-  automatically granted admin (see the "Auth0 Login" and "Applications & API Keys" wiki
-  pages for the full bootstrap story).
+- `POST /admin/applications`, `GET /admin/applications` let an admin register a service
+  client. `POST /admin/applications/:id/api-keys` issues it an API key: Stripe/GitHub PAT
+  pattern (`<prefix>.<secret>`), plaintext shown exactly once, only the secret's SHA-256
+  hash stored server-side. The very first user ever to log in is automatically granted
+  admin (see the "Auth0 Login" and "Applications & API Keys" wiki pages).
+- `GET /admin/applications/:id/api-keys` lists an application's keys (metadata only).
+  `POST .../api-keys/:keyId/rotate` atomically issues a replacement key and revokes the
+  old one -- a partial failure can't leave zero or two live keys. `POST
+  .../api-keys/:keyId/revoke` revokes a key outright, idempotently. All admin-gated.
 
-Next up: #5 (key rotation and revocation).
+All admin-gated routes are ready for other services to build a JWKS-verified
+resource-server integration against, but issuance ≠ verification -- nothing in this
+service can authenticate an incoming API key yet. Next up: #6 (JWKS endpoint).
 
 ## Running locally
 

@@ -1,0 +1,27 @@
+meta {
+  name: api-keys-rotate
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/admin/applications/:id/api-keys/:keyId/rotate
+  body: none
+  auth: none
+}
+
+params:path {
+  id: replace-with-a-real-application-id
+  keyId: replace-with-a-real-key-id
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: atomically issues a new key for the application and revokes
+  the key at :keyId. Returns the new plaintext key once, same shape as
+  api-keys-mint. 404 if the key doesn't belong to the application, 409 if
+  it's already revoked. Documents the unauthenticated case (401) here.
+}
