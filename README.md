@@ -42,9 +42,16 @@ rotation/revocation (#5), and JWKS + token issuance (#6) complete:
   revoked keys with 401. Resource servers (e.g. MarketPulse) can now verify tokens purely
   against the JWKS, with no shared secret and no call back to this service per request
   (see the "JWKS & Token Issuance" wiki page).
+- (#9) `GET /health` is now a readiness check -- it verifies the signing key is loadable
+  (which also proves the database is reachable), returning `503` rather than a static
+  `200`. `POST /token` has an HTTP-level test suite (`internal/http/token_test.go`)
+  covering valid/wrong/unknown/revoked/malformed credentials. The revocation-vs-TTL and
+  no-refresh-token tradeoffs are documented in code and on the wiki rather than left
+  implicit.
 
-Next up: #7 (rate limiting + structured logging), then #8 (retrofit MarketPulse to verify
-tokens via this service's JWKS instead of its shared-secret HS256 check).
+Next up: #7 (rate limiting + structured logging, including a tighter limit and audit
+logging specifically for `/token`), then #8 (retrofit MarketPulse to verify tokens via
+this service's JWKS instead of its shared-secret HS256 check).
 
 ## Running locally
 
