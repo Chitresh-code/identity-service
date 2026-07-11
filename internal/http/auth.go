@@ -161,6 +161,18 @@ func (h *AuthHandler) RequireSession(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// RequireAdmin is Echo middleware that requires a valid session (see
+// RequireSession) whose user is an admin, rejecting non-admins with 403.
+func (h *AuthHandler) RequireAdmin(next echo.HandlerFunc) echo.HandlerFunc {
+	return h.RequireSession(func(c echo.Context) error {
+		u, _ := c.Get(userContextKey).(user.User)
+		if !u.IsAdmin {
+			return echo.NewHTTPError(http.StatusForbidden, "admin access required")
+		}
+		return next(c)
+	})
+}
+
 func randomToken(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {

@@ -12,6 +12,7 @@ type User struct {
 	Auth0Sub  string    `json:"-"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
+	IsAdmin   bool      `json:"is_admin"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -19,7 +20,9 @@ type User struct {
 // Store persists and retrieves users.
 type Store interface {
 	// UpsertByAuth0Sub creates the user for sub if it doesn't exist, or refreshes
-	// its email/name from the latest Auth0 profile if it does.
+	// its email/name from the latest Auth0 profile if it does. The very first
+	// user ever created is granted admin; nothing about later logins changes an
+	// existing user's admin status.
 	UpsertByAuth0Sub(ctx context.Context, sub, email, name string) (User, error)
 	// ByID looks up a user by their identity-service id.
 	ByID(ctx context.Context, id string) (User, error)

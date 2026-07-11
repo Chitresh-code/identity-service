@@ -16,6 +16,7 @@ type userModel struct {
 	Auth0Sub  string    `gorm:"column:auth0_sub;uniqueIndex"`
 	Email     string    `gorm:"column:email"`
 	Name      string    `gorm:"column:name"`
+	IsAdmin   bool      `gorm:"column:is_admin"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
@@ -28,6 +29,7 @@ func (m userModel) toDomain() user.User {
 		Auth0Sub:  m.Auth0Sub,
 		Email:     m.Email,
 		Name:      m.Name,
+		IsAdmin:   m.IsAdmin,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -50,7 +52,15 @@ func (s *UserStore) UpsertByAuth0Sub(ctx context.Context, sub, email, name strin
 		return user.User{}, err
 	}
 
-	m := userModel{ID: id, Auth0Sub: sub, Email: email, Name: name}
+	// Only the very first user ever created becomes admin. This is set on the
+	// model but deliberately left out of DoUpdates below, so an existing user's
+	// admin status is never touched by a later login.
+	var userCount int64
+	if err := s.db.WithContext(ctx).Model(&userModel{}).Count(&userCount).Error; err != nil {
+		return user.User{}, fmt.Errorf("count users: %w", err)
+	}
+
+	m := userModel{ID: id, Auth0Sub: sub, Email: email, Name: name, IsAdmin: userCount == 0}
 	err = s.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "auth0_sub"}},

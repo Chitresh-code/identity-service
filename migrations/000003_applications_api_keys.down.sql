@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS api_keys;
+DROP TABLE IF EXISTS applications;
+ALTER TABLE users DROP COLUMN IF EXISTS is_admin;

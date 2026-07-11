@@ -1,0 +1,27 @@
+meta {
+  name: api-keys-mint
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/admin/applications/:id/api-keys
+  body: none
+  auth: none
+}
+
+params:path {
+  id: replace-with-a-real-application-id
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: mints a new API key for the application at :id. Returns the
+  plaintext key exactly once -- only its secret half's hash is stored, so
+  there's no way to recover it afterward. Documents the unauthenticated case
+  (401). Re-run manually with an admin's identity_session cookie and a real
+  application id to get a 201 with the plaintext key.
+}

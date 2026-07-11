@@ -46,11 +46,16 @@ func main() {
 		store.NewSessionStore(db),
 		cfg.AppBaseURL,
 	)
+	applicationsHandler := identityhttp.NewApplicationsHandler(
+		store.NewApplicationStore(db),
+		store.NewAPIKeyStore(db),
+	)
 
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.GET("/health", healthHandler)
 	authHandler.Register(e)
+	applicationsHandler.Register(e, authHandler.RequireAdmin)
 
 	if err := e.Start(":" + cfg.Port); err != nil {
 		log.Fatalf("server stopped: %v", err)
