@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/sales-intelligence1/identity-service/internal/user"
+	"github.com/sales-intelligence1/identity-service/pkg/user"
 )
 
 type userModel struct {

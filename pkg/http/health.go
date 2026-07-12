@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/sales-intelligence1/identity-service/internal/signingkey"
+	"github.com/sales-intelligence1/identity-service/pkg/signingkey"
 )
 
 // HealthHandler reports service readiness: not just that the process is up,

@@ -6,8 +6,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/sales-intelligence1/identity-service/internal/config"
-	"github.com/sales-intelligence1/identity-service/internal/server"
+	"github.com/sales-intelligence1/identity-service/pkg/config"
+	"github.com/sales-intelligence1/identity-service/pkg/server"
 )
 
 func main() {

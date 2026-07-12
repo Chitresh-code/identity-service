@@ -6,8 +6,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/sales-intelligence1/identity-service/internal/apikey"
-	"github.com/sales-intelligence1/identity-service/internal/application"
+	"github.com/sales-intelligence1/identity-service/pkg/apikey"
+	"github.com/sales-intelligence1/identity-service/pkg/application"
 )
 
 // ApplicationsHandler wires the admin-gated application and API key routes.

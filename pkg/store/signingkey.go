@@ -10,7 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sales-intelligence1/identity-service/internal/signingkey"
+	"github.com/sales-intelligence1/identity-service/pkg/signingkey"
 )
 
 type signingKeyModel struct {

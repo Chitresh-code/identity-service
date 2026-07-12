@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sales-intelligence1/identity-service/internal/application"
+	"github.com/sales-intelligence1/identity-service/pkg/application"
 )
 
 type applicationModel struct {

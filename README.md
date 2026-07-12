@@ -45,7 +45,7 @@ and rate limiting + structured logging (#7) complete:
   (see the "JWKS & Token Issuance" wiki page).
 - (#9) `GET /health` is now a readiness check -- it verifies the signing key is loadable
   (which also proves the database is reachable), returning `503` rather than a static
-  `200`. `POST /token` has an HTTP-level test suite (`internal/http/token_test.go`)
+  `200`. `POST /token` has an HTTP-level test suite (`pkg/http/token_test.go`)
   covering valid/wrong/unknown/revoked/malformed credentials. The revocation-vs-TTL and
   no-refresh-token tradeoffs are documented in code and on the wiki rather than left
   implicit.
@@ -62,7 +62,7 @@ and rate limiting + structured logging (#7) complete:
 #8 (retrofit MarketPulse to verify tokens via this service's JWKS instead of its
 shared-secret HS256 check) is complete on the market-data-service side.
 
-Ready to deploy on Vercel: Echo app construction lives in `internal/server`, shared by
+Ready to deploy on Vercel: Echo app construction lives in `pkg/server`, shared by
 both `cmd/identity-service` (traditional long-running binary) and `api/index.go`
 (Vercel's Go serverless runtime) so the two targets can't drift. See "Deploying to
 Vercel" below.
@@ -111,7 +111,7 @@ path to it, so Echo's own router still does the real routing. Steps:
 4. `vercel` (preview) or `vercel --prod` (production) from the repo root, or connect
    the GitHub repo in the Vercel dashboard for git-based deploys.
 
-**Known limitation:** rate limiting (`internal/server`) uses an in-memory store
+**Known limitation:** rate limiting (`pkg/server`) uses an in-memory store
 (`middleware.RateLimiterMemoryStoreConfig`), which is per-process. On Vercel, each
 warm serverless instance holds its own counters, so a limit like "10/min on `/token`"
 becomes "10/min *per concurrently-running instance*" under scale-out, not a true

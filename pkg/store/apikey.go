@@ -8,7 +8,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sales-intelligence1/identity-service/internal/apikey"
+	"github.com/sales-intelligence1/identity-service/pkg/apikey"
 )
 
 type apiKeyModel struct {
