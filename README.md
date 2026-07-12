@@ -59,8 +59,13 @@ and rate limiting + structured logging (#7) complete:
   a reason on denial) for every issuance attempt (see the "Rate Limiting & Logging" wiki
   page).
 
-Next up: #8 (retrofit MarketPulse to verify tokens via this service's JWKS instead of its
-shared-secret HS256 check).
+#8 (retrofit MarketPulse to verify tokens via this service's JWKS instead of its
+shared-secret HS256 check) is complete on the market-data-service side.
+
+Ready to deploy on Vercel: Echo app construction lives in `internal/server`, shared by
+both `cmd/identity-service` (traditional long-running binary) and `api/index.go`
+(Vercel's Go serverless runtime) so the two targets can't drift. See "Deploying to
+Vercel" below.
 
 ## Running locally
 
@@ -84,3 +89,31 @@ A Bruno collection lives in `bruno/` — open it in the Bruno app, or run headle
 ```
 make bruno
 ```
+
+## Deploying to Vercel
+
+`api/index.go` is the Vercel Go serverless entrypoint; `vercel.json` rewrites every
+path to it, so Echo's own router still does the real routing. Steps:
+
+1. **Run migrations against the target database first.** Vercel doesn't run a build
+   step for Go the way it does `npm run build` for Node — schema changes have to be
+   applied separately, before (or right after) each deploy that needs them:
+   ```
+   DATABASE_URL=<production DB URL> make migrate-up
+   ```
+2. **Set environment variables** in the Vercel project dashboard (or `vercel env add`):
+   `DATABASE_URL`, `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`,
+   `APP_BASE_URL` (the deployed URL, e.g. `https://identity-service.vercel.app` or a
+   custom domain), `ENVIRONMENT=production`. `PORT` is unused on Vercel — it manages
+   the port itself.
+3. **Update Auth0's Allowed Callback/Logout URLs** to the same `APP_BASE_URL` (Auth0
+   rejects callbacks to URLs not on that list).
+4. `vercel` (preview) or `vercel --prod` (production) from the repo root, or connect
+   the GitHub repo in the Vercel dashboard for git-based deploys.
+
+**Known limitation:** rate limiting (`internal/server`) uses an in-memory store
+(`middleware.RateLimiterMemoryStoreConfig`), which is per-process. On Vercel, each
+warm serverless instance holds its own counters, so a limit like "10/min on `/token`"
+becomes "10/min *per concurrently-running instance*" under scale-out, not a true
+global limit. Fine for now; if that gap matters, swap in a shared store (e.g.
+Redis/Upstash-backed) instead of the in-memory one.
