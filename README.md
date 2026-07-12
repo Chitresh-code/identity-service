@@ -1,4 +1,4 @@
-# identity-service
+# Identity Service
 
 Auth/identity microservice for the `sales-intelligence` platform. Handles human/admin
 login via Auth0, issues and manages application API keys, and exposes a JWKS endpoint
