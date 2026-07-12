@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sales-intelligence1/identity-service/internal/session"
+	"github.com/sales-intelligence1/identity-service/pkg/session"
 )
 
 type sessionModel struct {

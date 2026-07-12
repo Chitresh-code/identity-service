@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/sales-intelligence1/identity-service/internal/signingkey"
+	"github.com/sales-intelligence1/identity-service/pkg/signingkey"
 )
 
 // JWKSHandler exposes this service's public signing keys so resource servers

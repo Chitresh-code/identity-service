@@ -10,8 +10,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sales-intelligence1/identity-service/internal/config"
-	"github.com/sales-intelligence1/identity-service/internal/server"
+	"github.com/sales-intelligence1/identity-service/pkg/config"
+	"github.com/sales-intelligence1/identity-service/pkg/server"
 )
 
 // app and initErr are set once per cold start and reused across every

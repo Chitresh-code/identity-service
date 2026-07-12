@@ -23,19 +23,30 @@ Run the narrowest relevant test first. Run `go test ./...` before handing off a 
 - **Language:** Go; use the version declared by `go.mod`.
 - **Dependencies:** Standard library first. Reuse existing modules before adding one.
 - **Stack:** Echo (router), GORM (ORM), golang-migrate (schema), Postgres, Auth0 (human/admin login).
-- **Layout:** Read `go.mod`, `README.md`, and the nearest package tests before changing a package. Follow the repository's existing `cmd/`, `internal/`, `pkg/`, and test layout where present.
+- **Layout:** Read `go.mod`, `README.md`, and the nearest package tests before changing a package. Follow the repository's existing `cmd/`, `pkg/`, and test layout where present.
 
 For a new service, keep dependencies flowing inward and organize packages by domain:
 
 ```
 cmd/identity-service/main.go   # wiring and process startup only
-internal/<domain>/             # domain behavior and its tests
-internal/http/                 # transport handlers and middleware
-internal/store/                # persistence implementations
-internal/config/               # validated configuration loading
+api/index.go                   # Vercel Go serverless entrypoint
+pkg/<domain>/                  # domain behavior and its tests
+pkg/http/                      # transport handlers and middleware
+pkg/store/                     # persistence implementations
+pkg/config/                    # validated configuration loading
 ```
 
-Use `internal/` by default. Create `pkg/` only for a deliberately supported, reusable public package. Keep `main` limited to composition; do not put business logic in handlers or startup wiring.
+**Use `pkg/`, not `internal/`, for anything `api/index.go` needs — which in practice is
+everything, since the whole app is wired through `pkg/server`.** This isn't the usual Go
+convention (`internal/` is normally the default for code not meant as a public API) —
+it's forced by Vercel's Go serverless builder, which wraps `api/*.go` in a synthetic
+`main` package outside the module's normal import-path context. Go's `internal/`
+visibility rule is purely lexical (an importer's path must share the prefix up through
+the parent of `/internal/`), so that synthetic wrapper's import of anything under
+`internal/` gets rejected at compile time even though it's legitimately part of the same
+module. `pkg/` isn't compiler-enforced the way `internal/` is, but keeps the same "shared
+app code, not a published library" intent. Keep `main` limited to composition; do not put
+business logic in handlers or startup wiring.
 
 ## Go standards
 

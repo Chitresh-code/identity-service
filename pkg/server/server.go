@@ -14,11 +14,11 @@ import (
 	gommonlog "github.com/labstack/gommon/log"
 	"golang.org/x/time/rate"
 
-	"github.com/sales-intelligence1/identity-service/internal/auth0"
-	"github.com/sales-intelligence1/identity-service/internal/config"
-	identityhttp "github.com/sales-intelligence1/identity-service/internal/http"
-	"github.com/sales-intelligence1/identity-service/internal/signingkey"
-	"github.com/sales-intelligence1/identity-service/internal/store"
+	"github.com/sales-intelligence1/identity-service/pkg/auth0"
+	"github.com/sales-intelligence1/identity-service/pkg/config"
+	identityhttp "github.com/sales-intelligence1/identity-service/pkg/http"
+	"github.com/sales-intelligence1/identity-service/pkg/signingkey"
+	"github.com/sales-intelligence1/identity-service/pkg/store"
 )
 
 // Rate limits, matching market-data-service's pattern of a tighter limit on

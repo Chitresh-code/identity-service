@@ -12,9 +12,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/sales-intelligence1/identity-service/internal/auth0"
-	"github.com/sales-intelligence1/identity-service/internal/session"
-	"github.com/sales-intelligence1/identity-service/internal/user"
+	"github.com/sales-intelligence1/identity-service/pkg/auth0"
+	"github.com/sales-intelligence1/identity-service/pkg/session"
+	"github.com/sales-intelligence1/identity-service/pkg/user"
 )
 
 const stateCookieName = "auth0_state"

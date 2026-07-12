@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/sales-intelligence1/identity-service/internal/session"
+	"github.com/sales-intelligence1/identity-service/pkg/session"
 )
 
 // CredentialIdentifier extracts a rate-limiting identity from the request's

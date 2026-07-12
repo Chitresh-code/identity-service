@@ -8,8 +8,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/sales-intelligence1/identity-service/internal/apikey"
-	"github.com/sales-intelligence1/identity-service/internal/signingkey"
+	"github.com/sales-intelligence1/identity-service/pkg/apikey"
+	"github.com/sales-intelligence1/identity-service/pkg/signingkey"
 )
 
 // tokenTTL is how long an issued access token stays valid.
