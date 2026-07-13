@@ -119,3 +119,42 @@ func IssueToken(key Key, issuer, subject string, ttl time.Duration) (token strin
 	}
 	return token, expiresAt, nil
 }
+
+// userClaims extends the standard registered claims with a product role, for
+// tokens issued to a logged-in user rather than an application. go-jose's
+// jwt.Claims has no room for extra fields, hence the embed.
+type userClaims struct {
+	jwt.Claims
+	Role string `json:"role,omitempty"`
+}
+
+// IssueUserToken signs a short-lived JWT asserting subject (a user ID) and
+// role, using key. Same signing path as IssueToken; resource servers verify
+// both the same way via JWKS and branch on whether a "role" claim is present.
+func IssueUserToken(key Key, issuer, subject, role string, ttl time.Duration) (token string, expiresAt time.Time, err error) {
+	signer, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.RS256, Key: key.PrivateKey},
+		(&jose.SignerOptions{}).WithType("JWT").WithHeader("kid", key.ID),
+	)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("build signer: %w", err)
+	}
+
+	now := time.Now()
+	expiresAt = now.Add(ttl)
+	claims := userClaims{
+		Claims: jwt.Claims{
+			Issuer:   issuer,
+			Subject:  subject,
+			IssuedAt: jwt.NewNumericDate(now),
+			Expiry:   jwt.NewNumericDate(expiresAt),
+		},
+		Role: role,
+	}
+
+	token, err = jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("sign user token: %w", err)
+	}
+	return token, expiresAt, nil
+}

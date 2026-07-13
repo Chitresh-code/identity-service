@@ -17,6 +17,7 @@ type userModel struct {
 	Email     string    `gorm:"column:email"`
 	Name      string    `gorm:"column:name"`
 	IsAdmin   bool      `gorm:"column:is_admin"`
+	Role      *string   `gorm:"column:role"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
@@ -24,7 +25,7 @@ type userModel struct {
 func (userModel) TableName() string { return "users" }
 
 func (m userModel) toDomain() user.User {
-	return user.User{
+	u := user.User{
 		ID:        m.ID,
 		Auth0Sub:  m.Auth0Sub,
 		Email:     m.Email,
@@ -33,6 +34,11 @@ func (m userModel) toDomain() user.User {
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
+	if m.Role != nil {
+		role := user.Role(*m.Role)
+		u.Role = &role
+	}
+	return u
 }
 
 // UserStore persists users in Postgres via GORM.
@@ -88,4 +94,17 @@ func (s *UserStore) ByID(ctx context.Context, id string) (user.User, error) {
 		return user.User{}, fmt.Errorf("load user %q: %w", id, err)
 	}
 	return m.toDomain(), nil
+}
+
+// SetRole implements user.Store.
+func (s *UserStore) SetRole(ctx context.Context, id string, role user.Role) error {
+	roleStr := string(role)
+	res := s.db.WithContext(ctx).Model(&userModel{}).Where("id = ?", id).Update("role", roleStr)
+	if res.Error != nil {
+		return fmt.Errorf("set role for user %q: %w", id, res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("set role for user %q: %w", id, gorm.ErrRecordNotFound)
+	}
+	return nil
 }

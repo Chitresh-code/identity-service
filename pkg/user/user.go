@@ -6,6 +6,17 @@ import (
 	"time"
 )
 
+// Role is a product-level permission scope for end users of relying-party
+// apps (sales-intel-web and friends) -- a separate axis from IsAdmin, which
+// only gates this service's own /admin/* routes. A user can be an admin,
+// hold a product Role, both, or neither.
+type Role string
+
+const (
+	RoleMember Role = "member" // sees/works only their own assigned accounts
+	RoleLead   Role = "lead"   // sees the whole pipeline
+)
+
 // User is an identity-service account, synced from an Auth0 profile on login.
 type User struct {
 	ID        string    `json:"id"`
@@ -13,6 +24,7 @@ type User struct {
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
 	IsAdmin   bool      `json:"is_admin"`
+	Role      *Role     `json:"role,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -26,4 +38,7 @@ type Store interface {
 	UpsertByAuth0Sub(ctx context.Context, sub, email, name string) (User, error)
 	// ByID looks up a user by their identity-service id.
 	ByID(ctx context.Context, id string) (User, error)
+	// SetRole assigns id's product Role. No self-service UI for this in v1 --
+	// only reachable via the admin-gated /admin/users/:id/role route.
+	SetRole(ctx context.Context, id string, role Role) error
 }

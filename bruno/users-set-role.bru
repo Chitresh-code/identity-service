@@ -1,0 +1,30 @@
+meta {
+  name: users-set-role
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/admin/users/00000000-0000-0000-0000-000000000000/role
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "role": "member"
+  }
+}
+
+assert {
+  res.status: eq 401
+}
+
+docs {
+  Admin-gated: sets a user's product role (member/lead), a separate axis from
+  is_admin. This request has no session cookie, so it documents the
+  unauthenticated case (401). Re-run manually with an admin's identity_session
+  cookie and a real user id to get a 200 with the updated user. role must be
+  exactly "member" or "lead" (400 otherwise). No self-service UI for this in
+  v1 -- assignment only happens through this endpoint.
+}

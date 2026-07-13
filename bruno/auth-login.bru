@@ -15,4 +15,12 @@ docs {
   state cookie and 302s to Auth0's hosted login page -- best exercised from a
   real browser, not headlessly, since completing it requires interactive
   login at Auth0.
+
+  Optional ?redirect_uri=<url> param: must exactly match an entry in
+  AUTH_ALLOWED_REDIRECT_URIS (400 otherwise). If present, auth-callback mints
+  a one-time handoff code and 302s to redirect_uri?code=... instead of
+  returning JSON directly -- see auth-exchange. This is how a relying-party
+  frontend on a different domain (e.g. sales-intel-web) gets a token for the
+  logged-in user without sharing this service's own session cookie
+  cross-domain.
 }

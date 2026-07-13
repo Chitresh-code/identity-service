@@ -45,12 +45,17 @@ func New(ctx context.Context, cfg config.Config) (*echo.Echo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init auth0 client: %w", err)
 	}
+	userStore := store.NewUserStore(db)
+	handoffStore := store.NewHandoffStore(db)
 	authHandler := identityhttp.NewAuthHandler(
 		auth0Client,
-		store.NewUserStore(db),
+		userStore,
 		store.NewSessionStore(db),
+		handoffStore,
 		cfg.AppBaseURL,
+		cfg.AllowedRedirectURIs,
 	)
+	usersHandler := identityhttp.NewUsersHandler(userStore)
 	apiKeyStore := store.NewAPIKeyStore(db)
 	applicationsHandler := identityhttp.NewApplicationsHandler(
 		store.NewApplicationStore(db),
@@ -63,6 +68,13 @@ func New(ctx context.Context, cfg config.Config) (*echo.Echo, error) {
 	}
 	jwksHandler := identityhttp.NewJWKSHandler(signingKeyStore)
 	tokenHandler := identityhttp.NewTokenHandler(apiKeyStore, signingKeyStore, cfg.AppBaseURL)
+	exchangeHandler := identityhttp.NewExchangeHandler(
+		handoffStore,
+		userStore,
+		store.NewUserRefreshTokenStore(db),
+		signingKeyStore,
+		cfg.AppBaseURL,
+	)
 	healthHandler := identityhttp.NewHealthHandler(signingKeyStore)
 
 	e := echo.New()
@@ -89,8 +101,10 @@ func New(ctx context.Context, cfg config.Config) (*echo.Echo, error) {
 	healthHandler.Register(e)
 	authHandler.Register(e)
 	applicationsHandler.Register(e, authHandler.RequireAdmin)
+	usersHandler.Register(e, authHandler.RequireAdmin)
 	jwksHandler.Register(e)
 	tokenHandler.Register(e, tokenRateLimiter)
+	exchangeHandler.Register(e, tokenRateLimiter)
 
 	return e, nil
 }

@@ -8,16 +8,25 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
+	"slices"
 	"time"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/sales-intelligence1/identity-service/pkg/auth0"
+	"github.com/sales-intelligence1/identity-service/pkg/handoff"
 	"github.com/sales-intelligence1/identity-service/pkg/session"
 	"github.com/sales-intelligence1/identity-service/pkg/user"
 )
 
 const stateCookieName = "auth0_state"
+
+// redirectURICookieName carries a requested relying-party redirect_uri from
+// login through callback -- same short-lived-cookie pattern as the state
+// cookie, since Auth0's callback only echoes back the "state" param, not
+// arbitrary extra data.
+const redirectURICookieName = "auth0_redirect_uri"
 
 // userContextKey is where RequireSession stashes the resolved user for
 // downstream handlers.
@@ -25,15 +34,26 @@ const userContextKey = "user"
 
 // AuthHandler wires the Auth0 login/callback/logout routes and session lookup.
 type AuthHandler struct {
-	auth0      *auth0.Client
-	users      user.Store
-	sessions   session.Store
-	appBaseURL string
+	auth0               *auth0.Client
+	users               user.Store
+	sessions            session.Store
+	handoffs            handoff.Store
+	appBaseURL          string
+	allowedRedirectURIs []string
 }
 
-// NewAuthHandler builds an AuthHandler.
-func NewAuthHandler(auth0Client *auth0.Client, users user.Store, sessions session.Store, appBaseURL string) *AuthHandler {
-	return &AuthHandler{auth0: auth0Client, users: users, sessions: sessions, appBaseURL: appBaseURL}
+// NewAuthHandler builds an AuthHandler. allowedRedirectURIs is the
+// exact-match allowlist relying-party frontends must appear in to use the
+// login handoff (see login's redirect_uri param); nil disables it.
+func NewAuthHandler(auth0Client *auth0.Client, users user.Store, sessions session.Store, handoffs handoff.Store, appBaseURL string, allowedRedirectURIs []string) *AuthHandler {
+	return &AuthHandler{
+		auth0:               auth0Client,
+		users:               users,
+		sessions:            sessions,
+		handoffs:            handoffs,
+		appBaseURL:          appBaseURL,
+		allowedRedirectURIs: allowedRedirectURIs,
+	}
 }
 
 // Register wires the auth routes onto e.
@@ -46,7 +66,18 @@ func (h *AuthHandler) Register(e *echo.Echo) {
 
 // login starts the Authorization Code flow: stash a CSRF state value in a
 // short-lived cookie, then redirect to Auth0's Universal Login page.
+//
+// An optional redirect_uri query param names a relying-party callback (e.g.
+// sales-intel-web's own /auth/callback) to hand a one-time login code off to
+// once Auth0 completes -- see callback. It must exactly match an entry in
+// allowedRedirectURIs; unrecognized values are rejected rather than silently
+// dropped, since a wrong redirect would resemble an open-redirect bug.
 func (h *AuthHandler) login(c echo.Context) error {
+	redirectURI := c.QueryParam("redirect_uri")
+	if redirectURI != "" && !slices.Contains(h.allowedRedirectURIs, redirectURI) {
+		return echo.NewHTTPError(http.StatusBadRequest, "redirect_uri not allowed")
+	}
+
 	state, err := randomToken(16)
 	if err != nil {
 		c.Logger().Errorf("generate login state: %v", err)
@@ -61,18 +92,37 @@ func (h *AuthHandler) login(c echo.Context) error {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
+	if redirectURI != "" {
+		c.SetCookie(&http.Cookie{
+			Name:     redirectURICookieName,
+			Value:    redirectURI,
+			Path:     "/",
+			MaxAge:   300,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
 	return c.Redirect(http.StatusFound, h.auth0.LoginURL(state))
 }
 
 // callback completes the Authorization Code flow: verify the CSRF state,
 // exchange the code for a verified identity, sync the user, and start a
-// session.
+// session -- identity-service's own, used by its admin UI/API. If login was
+// started with a redirect_uri, also mint a one-time handoff code and send
+// the browser there instead of returning JSON directly; the relying party
+// exchanges that code server-side for its own token pair (see ExchangeHandler).
 func (h *AuthHandler) callback(c echo.Context) error {
 	stateCookie, err := c.Cookie(stateCookieName)
 	if err != nil || stateCookie.Value == "" || stateCookie.Value != c.QueryParam("state") {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid login state")
 	}
 	clearCookie(c, stateCookieName)
+
+	redirectURI := ""
+	if cookie, err := c.Cookie(redirectURICookieName); err == nil {
+		redirectURI = cookie.Value
+		clearCookie(c, redirectURICookieName)
+	}
 
 	code := c.QueryParam("code")
 	if code == "" {
@@ -113,6 +163,29 @@ func (h *AuthHandler) callback(c echo.Context) error {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
+
+	if redirectURI != "" {
+		rawCode, codeHash, err := session.NewToken()
+		if err != nil {
+			c.Logger().Errorf("new handoff code: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "login failed")
+		}
+		if _, err := h.handoffs.Create(ctx, u.ID, codeHash, time.Now().Add(handoff.TTL)); err != nil {
+			c.Logger().Errorf("create handoff code: %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "login failed")
+		}
+
+		dest, err := url.Parse(redirectURI)
+		if err != nil {
+			c.Logger().Errorf("parse redirect_uri %q: %v", redirectURI, err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "login failed")
+		}
+		q := dest.Query()
+		q.Set("code", rawCode)
+		dest.RawQuery = q.Encode()
+		return c.Redirect(http.StatusFound, dest.String())
+	}
+
 	return c.JSON(http.StatusOK, u)
 }
 
