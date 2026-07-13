@@ -38,12 +38,14 @@ func NewExchangeHandler(handoffs handoff.Store, users user.Store, refreshTokens 
 	return &ExchangeHandler{handoffs: handoffs, users: users, refreshTokens: refreshTokens, signingKeys: signingKeys, issuer: issuer}
 }
 
-// Register wires the exchange/refresh routes onto e, gated by rateLimiter --
-// same tighter credential-verification limit as /token, since both routes
-// turn a bearer credential (handoff code, refresh token) into a fresh JWT.
+// Register wires the exchange/refresh/revoke routes onto e, gated by
+// rateLimiter -- same tighter credential-verification limit as /token,
+// since all three routes take a bearer credential (handoff code, refresh
+// token) as input.
 func (h *ExchangeHandler) Register(e *echo.Echo, rateLimiter echo.MiddlewareFunc) {
 	e.POST("/auth/exchange", h.exchange, rateLimiter)
 	e.POST("/auth/refresh", h.refresh, rateLimiter)
+	e.POST("/auth/revoke", h.revoke, rateLimiter)
 }
 
 type exchangeRequest struct {
@@ -51,6 +53,10 @@ type exchangeRequest struct {
 }
 
 type refreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type revokeRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
@@ -119,6 +125,26 @@ func (h *ExchangeHandler) refresh(c echo.Context) error {
 	}
 
 	return h.issueTokenPair(c, u)
+}
+
+// revoke deletes a refresh token so it can no longer be used, for a
+// relying-party frontend's logout. Deliberately not gated on it belonging to
+// any particular user or session -- the presenter already had to possess
+// the raw token (equivalent to a bearer credential) to revoke it, same
+// trust model as identity-service's own session logout. Deleting an
+// already-invalid token is a no-op success, not an error, so logout can't
+// itself fail on a token that's already expired or was already revoked.
+func (h *ExchangeHandler) revoke(c echo.Context) error {
+	var req revokeRequest
+	if err := c.Bind(&req); err != nil || req.RefreshToken == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing refresh_token")
+	}
+
+	if err := h.refreshTokens.DeleteByTokenHash(c.Request().Context(), session.HashToken(req.RefreshToken)); err != nil {
+		c.Logger().Errorf("revoke refresh token: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to revoke token")
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *ExchangeHandler) issueTokenPair(c echo.Context, u user.User) error {

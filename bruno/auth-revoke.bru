@@ -1,0 +1,30 @@
+meta {
+  name: auth-revoke
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/auth/revoke
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh_token": ""
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+docs {
+  Deletes a refresh token so it can no longer be used -- what a
+  relying-party frontend's logout calls. This request has no
+  refresh_token, so it documents the missing-token case (400). Re-run
+  manually with a real refresh_token to get a 204. Deleting an
+  already-invalid token is also a 204, not an error, so logout can't fail
+  on a token that's already expired or revoked.
+}
