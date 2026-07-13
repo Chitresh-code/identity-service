@@ -1,0 +1,31 @@
+meta {
+  name: auth-exchange
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/auth/exchange
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "code": ""
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+docs {
+  Trades a one-time login handoff code (minted by auth-callback when
+  /auth/login was started with an allowlisted redirect_uri) for a token pair:
+  {access_token (1h RS256 JWT, "role" claim), token_type, expires_in,
+  refresh_token (24h opaque), refresh_expires_in}. This request has no code,
+  so it documents the missing-code case (400). Re-run manually with a real
+  code (from a browser login round-trip started with redirect_uri set) to get
+  a 200 -- codes are single-use and expire after 60s.
+}

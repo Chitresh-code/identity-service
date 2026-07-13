@@ -1,0 +1,28 @@
+meta {
+  name: auth-refresh
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh_token": ""
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+docs {
+  Trades a valid refresh token (from auth-exchange) for a fresh token pair,
+  rotating the refresh token -- the old one stops working once a new one is
+  issued. This request has no refresh_token, so it documents the missing-token
+  case (400). Re-run manually with a real refresh_token to get a 200.
+}
